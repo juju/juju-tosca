@@ -1,0 +1,410 @@
+tosca_definitions_version: tosca_simple_1.0.0
+
+description: >
+  TOSCA simple profile with node.js, mongodb,... 
+
+# define macro expansion and references for common use.
+dsl_definitions:
+    url_parameters: &url_parameters
+        host: {get_attribute: [TARGET, ip_address]}
+        port: {get_attribute: [TARGET, port]}
+        url_path: {get_attribute: [TARGET, url_path]}
+
+    ubuntu_node: &ubuntu_node
+      # compute properties (flavor)
+      disk_size: 10
+      num_cpus: { get_input: my_cpus }
+      mem_size: 4096
+      # host image properties
+      os_arch: x86_64 
+      os_type: Linux  
+      os_distribution: Ubuntu
+      os_version: 14.04    
+    ubuntu_host: &ubuntu_host
+      host: tosca.nodes.Compute
+      constraints:
+        os_distribution: 
+          - valid_values: [Ubuntu]
+        os_version: 
+          - valid_values: [12.04, 14.04]
+
+    nginx_changed_hosts: &nginx_changed_hosts |
+        #!/usr/bin/python
+        import os, subprocess
+        # List of opaque identifiers for current set of targets
+        # On add this includes the currently being acted upon target
+        # On remove it does not include the execution change target.
+        targets = os.environ['TARGETS'].split()
+        urls = []
+        for t in targets:
+            urls.append("http://%s:%s/%s " % (
+                os.environ.get("%s_host" % t),
+                os.environ.get("%s_port" % t),
+                os.environ.get("%s_url_path" % t)))
+        template = """\
+          upstream backend {
+                %s
+          }
+          server {
+            location / {
+               proxy_pass http://backend;
+            }
+          }
+          """ % (";\n".join(urls))
+        open("/etc/nginx/sites-available/upstream.conf", "w") as fh:
+            fh.write(template)
+        subprocess.check_call(['service', 'nginx', 'reload'])
+
+inputs:
+
+capability_types:
+  tosca.capabilities.MongoEndpoint:
+    derived_from: tosca.capabilities.DatabaseEndpoint
+  tosca.capabilities.ElasticsearchEndpoint:
+    derived_from: tosca.capabilities.DatabaseEndpoint
+  tosca.capabilities.CollectdEndpoint:
+    derived_from: tosca.capabilities.Endpoint
+  tosca.capabilities.RsyslogEndpoint:
+    derived_from: tosca.capabilities.Endpoint
+  tosca.capabilities.WebApp:
+    derived_from: tosca.capabilities.Endpoint
+    properties:
+      # would be nice but creates redundancy with properties already on the endpoint
+      # url: string
+      url_path: 
+        type: string
+        default: /
+
+node_types:
+  tosca.nodes.Elasticsearch
+     derived_from: tosca.nodes.SoftwareComponent
+     requirements:
+      - *ubuntu_host
+     capabilities:
+      - search_api: tosca.capabilities.ElasticsearchEndpoint
+     properties:
+       search_api_port:
+         type: integer
+         description: reflect the default elasticsearch http client port.
+         # port is techinically a range 9200-9300
+         default: 9200
+         constraints:
+           - in_range: [ 9200, 9300 ]
+  tosca.nodes.Nginx:
+    derived_from: tosca.nodes.SoftwareComponent
+    requirements:
+      - *ubuntu_host
+      - upstream: tosca.nodes.WebApp
+        relationship_type: tosca.relationships.ConnectsTo
+        interfaces:
+          inputs: *url_parameters
+          tosca.interfaces.relationship.Configure:
+            add_target: *nginx_changed_hosts
+            remove_target: *nginx_changed_hosts
+      - downstream: tosca.nodes.WebApp
+    interfaces:
+      Standard:
+        create: |
+          #!/bin/bash
+          apt-get install -y nginx
+        start: |
+          #!/bin/bash
+          start nginx
+        stop: |
+          #!/bin/bash
+          stop nginx
+        delete: |
+          #!/bin/bash
+          apt-get purge -y nginx
+  tosca.nodes.Logstash:
+    derived_from: tosca.nodes.SoftwareComponent
+    requirements:
+      - *ubuntu_host
+      - search_index: tosca.capabilities.ElasticsearchEndpoint
+        relationship_type: tosca.relationships.ConnectsTo
+        interfaces:
+          inputs: *url_parameters
+          tosca.interfaces.relationship.Configure:
+              pre_configure_source: |
+                 #!/usr/bin/python
+                 import os
+                 with open("/etc/logstash/storage.conf", 'w') as fh:
+                     fh.write("""
+                       output {
+                         elasticsearch {
+                           action => index 
+                           bind_host => %s 
+                           bind_port => %s 
+                         }
+                       }""" % (os.environ['host'], os.environ['port']))
+                     
+    capabilities:
+      - collectd_collector: tosca.capabilities.CollectdEndpoint
+        relationship_type: tosca.relationships.ConnectsTo
+        interfaces:
+          inputs: *url_parameters
+          tosca.interfaces.relationship.Configure:
+              pre_configure_target: |
+                #!/usr/bin/python
+                with open("/etc/logstash/collectd.conf", "w") as fh:
+                   fh.write("""
+                   input {
+                     udp {
+                     port => 25826         # 25826 is the default for collectd
+                     buffer_size => 1452   # 1452 is the default for collectd
+                     codec => collectd { }
+                     tags => ["metrics"]
+                     type => "collectd"
+                     }
+                   }""")
+      - syslog_collector: tosca.capabilities.RSyslogEndpoint
+        relationship_type: tosca.relationships.ConnectsTo
+        interfaces:
+          inputs: *url_parameters
+          tosca.interfaces.relationship.Configure:
+              pre_configure_target: |
+                #!/usr/bin/python
+                with open("/etc/logstash/rsyslog.conf", "w") as fh:
+                   fh.write("""
+                   input {
+                     relp {
+                       port => 2154
+                       tags => ["logs"]
+                     }
+                    }""")
+    interfaces:
+      Standard:
+        create: |
+          #!/bin/bash
+          wget https://download.elasticsearch.org/logstash/logstash/logstash-1.4.2.tar.gz
+          echo "6e6be734392e8c7d6d55e23d0bd8d2b3 logstash-1.4.2.tar.gz" > checksum
+          tar xzvf logstash-1.4.2.tar.gz
+          apt-get install -y openjdk-7-jre-headless
+          # instlal upstart job
+        start: |
+          #!/bin/bash
+          start logstash
+        stop: |
+          #!/bin/bash
+          stop logstash
+        delete: |
+          #!/bin/bash
+          rm -Rf logstash*      
+  tosca.nodes.Collectd:
+    derived_from: tosca.nodes.SoftwareComponent
+    requirements:
+      - *ubuntu_host
+      - collector: tosca.capabilities.CollectdEndpoint
+        interfaces:
+          inputs: 
+            host: {get_attribute: [TARGET, ip_address]}
+          tosca.interfaces.relation.Configure:
+            pre_configure_source: |
+              # point collectd to logstash host (udp collectd)
+              # write it out to /etc/collectd *?*
+              <Plugin "network">
+              # Export to an internal server
+              # (demonstrates usage without additional options)
+               Server "$host"
+              </Plugin>
+        
+    interfaces:
+        Standard:
+            create: |
+              #!/bin/bash
+              apt-get install -y collectd
+  tosca.nodes.Kibana:
+    derived_from: tosca.nodes.SoftwareComponent
+    requirements:
+     - *ubuntu_host
+     - search_index: tosca.capabilities.ElasticsearchEndpoint
+    capabilities:
+     - dashboard_ui: tosca.capaibilities.WebApp
+  tosca.nodes.Rsyslog:
+    derived_from: tosca.nodes.SoftwareComponent
+    requirements:
+     - *ubuntu_host
+     - collector: tosca.capabilities.RsyslogEndpoint
+  tosca.nodes.Database.MongoDB:
+    derived_from: tosca.nodes.Database
+    requirements:
+      - host: tosca.nodes.DBMS.MongoDB
+    capabilities:
+      database_endpoint: tosca.capabilities.MongoEndpoint
+  tosca.nodes.DBMS.MongoDB:
+    derived_from: tosca.nodes.DBMS
+    properties:
+      dbms_port:
+        description: reflect the default MongoDB server port (verify default value)
+        default: 27017
+    requirements:
+
+    capabilities:
+      host: 
+        type: Container
+        properties:
+          valid_node_types: [ tosca.nodes.Database.MongoDB ]
+    interfaces:
+      Standard:
+        create: |
+          #!/bin/bash
+          apt-get install -y mongodb
+        configure:
+          description: configure is automatic for mongodb. No post config is needed.
+        start: |
+          #!/bin/bash
+          start mongodb 
+        stop: |
+          #!/bin/bash
+          stop mongodb
+        delete: |
+          #!/bin/bash
+          apt-get purge -y mongodb
+  tosca.nodes.Nodejs:
+    derived_from: tosca.nodes.SoftwareComponent
+    properties:
+      github_url:
+        description: location of the application on the github.
+        default: https://github.com/mmm/testnode.git
+    requirements:
+      - mongodb: tosca.capabilities.MongoEndpoint
+        relationship_type: tosca.relationships.ConnectsTo
+        interfaces:
+          tosca.interfaces.relationship.Configure:
+            pre_configure_source:
+              inputs:
+                host: { get_attribute: [ TARGET, ip_address ] }
+                port: { get_attribute: [ TARGET, port]}                     
+              implementation: |
+                #!/bin/bash
+                cat > /opt/node/config.js<<EOF
+                {
+                "host": "${host}"
+                , "port": ${port}
+                }
+                EOF
+      - *ubuntu_host
+    interfaces:                
+      Standard:
+        create: |
+          #!/bin/bash
+          add-apt-repository ppa: chris-lea/node.js
+          apt-get update
+          apt-get install -y nodejs build-essential curl git npm
+        configure: |
+          #!/bin/bash
+          export app_dir=/opt/app
+          git clone $github_url /opt/app
+          if [ -f /opt/app/package.json ] 
+             cd  /opt/app/ && npm install
+          fi
+
+          cat > /etc/init/nodeapp.conf <<EOS
+          description "node.js app"
+           
+          start on (net-device-up
+                    and local-filesystems
+                    and runlevel [2345])
+          stop on runlevel [!2345]
+           
+          expect fork
+          respawn
+           
+          script
+            export HOME=/
+            export NODE_PATH=/usr/lib/node
+            exec /usr/bin/node ${app_dir}/server.js >> /var/log/nodeapp.log 2>&1 &
+          end script
+          EOS
+        start: |
+          #!/bin/bash
+          start nodeapp
+        stop: |
+          #!/bin/bash
+          stop nodeapp
+        delete: |
+          #!/bin/bash
+          rm -Rf /opt/nodeapp
+          apt-get remove -y nodejs npm build-essential git curl
+
+node_templates:
+  mongo_db:
+    type: tosca.nodes.Database.MongoDB
+    requirements:
+      - host: mongo_dbms
+  mongo_dbms:
+    type: tosca.nodes.DBMS.MongoDB
+    requirements:
+      - host: mongo_server
+  mongo_server:
+    type: tosca.nodes.Compute
+    properties: *ubuntu_node
+  elasticsearch_server:
+    type: tosca.nodes.Compute
+    properties: *ubuntu_node
+  elasticsearch:
+    type: tosca.nodes.Elasticsearch
+    requirements:
+      - host: elasticsearch_server
+  logstash_server:
+    type: tosca.nodes.Compute
+    properties: *ubuntu_node
+  logstash:
+    type: tosca.nodes.Logstash
+    requirements:
+      - host: logstash_server
+      - search_index: elasticsearch
+  app:
+    type: tosca.nodes.Nodejs
+    properties:
+        github_url: https://github.com/mysupercool/fizzbuzz.git
+    requirements:
+      - host: app_server
+      - mongodb: mongo_db
+  app_rsyslog:
+    type: tosca.nodes.Rsyslog
+    requirements:
+      - host: app_server
+      - collector: logstash
+  mongodb_rsyslog:
+    type: tosca.nodes.Rsyslog
+    requirements:
+      - host: mongodb_server
+      - collector: logstash
+  elasticsearch_rsyslog:
+    type: tosca.nodes.Rsyslog
+    requirements:
+      - host: elasticsearch_server
+      - collector: logstash
+  logstash_rsyslog:
+    type: tosca.nodes.Rsyslog
+    requirements:
+      - host: logstash
+      - collector: logstash                      
+  app_collectd:
+    type: tosca.nodes.Collectd
+    requirements:
+      - host: app_server
+      - collector: logstash
+  mongo_collectd:
+    type: tosca.nodes.Collectd
+    requirements:
+      - host: mongodb_server
+      - collector: logstash
+  logstash_collectd:
+    type: tosca.nodes.Collectd
+    requirements:
+      - host: logstash_server
+      - collector: logstash
+  elasticsearch_collectd:
+    type: tosca.nodes.Collectd
+    requirements:
+      - host: elasticsearch_server
+      - collector: logstash                
+  app_server:
+    min_instances: 1
+    max_instances: 3
+    properties: *ubuntu_node
+
+outputs:
+

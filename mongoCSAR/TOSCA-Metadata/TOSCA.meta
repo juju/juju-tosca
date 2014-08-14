@@ -1,0 +1,7 @@
+TOSCA-Meta-File-Version: 1.0
+CSAR-Version: 1.1
+Created-By: OASIS TOSCA TC
+
+Name: mongo-node-elk.yaml
+Content-Type: application/vnd.oasis.TOSCA.definitions.yaml
+

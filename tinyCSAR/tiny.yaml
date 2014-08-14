@@ -1,0 +1,10 @@
+tosca_definitions_version: tosca_simple_1.0.0
+
+description: >
+  TOSCA tiny profile just for parser check
+
+inputs:
+
+capability_types:
+  tosca.capabilities.MongoEndpoint:
+    derived_from: tosca.capabilities.DatabaseEndpoint
