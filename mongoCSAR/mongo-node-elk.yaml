@@ -76,7 +76,7 @@ capability_types:
         default: /
 
 node_types:
-  tosca.nodes.Elasticsearch
+  tosca.nodes.Elasticsearch:
      derived_from: tosca.nodes.SoftwareComponent
      requirements:
       - *ubuntu_host
