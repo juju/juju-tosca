@@ -34,7 +34,11 @@ except ImportError:
   from yaml import SafeLoader as Loader
 
 def usage():
-    print 'juju-tosca-import.py [--help] [--description] <CSAR zip file>'
+  print 'juju-tosca-import.py [--help] [--description] <CSAR zip file>'
+
+def description():
+  print """Juju plugin to import a orchestration specification from 
+  a CSAR file containing YAML files"""
 
 def parse_yaml(yamlfile):
   #open the yaml file, and load the content
@@ -46,9 +50,8 @@ def parse_yaml(yamlfile):
 
   content=yf.read()
   yc=yaml.load(content, Loader=Loader)
-  logger.debug("Yaml content:")
-  pprint.pprint(yc)
-
+  return yc
+ 
 def unpack_zip(zipfn):
   #zip file needs to be in the TOSCA CSAR format
   try:
@@ -73,15 +76,26 @@ def parse_metafile(tmpdir):
     if (line.startswith("Name")):
       attr,value = line.split(":",2)
       # if it's a yaml file pointer, need to find it here, and parse it?
-      logger.debug(tmpdir+"/"+value.strip())
-      parse_yaml(tmpdir+"/"+value.strip())
+      logger.debug("Found yaml file: "+tmpdir+"/"+value.strip())
+      # Need to handle multiple yaml files
+      yamlcontent=parse_yaml(tmpdir+"/"+value.strip())
+  return yamlcontent
 
-def create_charms():
-  #create charms based on yaml file
+def create_charm(name,spec):
   pass
 
-def create_relations():
+def create_charms(yaml):
+  #create charms based on yaml file
+  for key,val in yaml['node_types'].items():
+    logger.debug("Found node type:"+key)
+    create_charm( key, val );
+  #pprint.pprint(yaml['node_types'])
+
+def create_relations(yaml):
   # create relations based on yaml file
+  pass
+
+def create_bundle():
   pass
 
 #Main
@@ -89,7 +103,8 @@ def main():
   #setup debug logging  
   global logger
   logger = logging.getLogger('root')
-  FORMAT = "[%(filename)s:%(lineno)s-%(funcName)s()]%(message)s"
+  #FORMAT = "[%(filename)s:%(lineno)s-%(funcName)s()]%(message)s"
+  FORMAT = "[%(lineno)s-%(funcName)s] %(message)s"
   logging.basicConfig(format=FORMAT)
   logger.setLevel(logging.DEBUG)
    
@@ -108,7 +123,7 @@ def main():
       usage()
       sys.exit()
     elif opt in ("-d", "--description"):
-      print "Juju plugin to import a orchestration specification from a CSAR file containing YAML files"
+      description()
       sys.exit()
     else:
         assert False, "unhandled option"
@@ -122,12 +137,17 @@ def main():
   tmpdir=unpack_zip(zipfn)
 
   # Read the TOSCA.meta file
-  yamls=parse_metafile(tmpdir)
-    
-  create_charms()
-  create_relations()
-
-  #cleanup
+  yaml=parse_metafile(tmpdir)
+#  logger.debug("Yaml content:")
+#  pprint.pprint(yaml) 
+  for t,val in yaml.items():
+      logger.debug("Found yaml root item:"+t)
+  
+  create_charms(yaml)
+  create_relations(yaml)
+  create_bundle()
+  
+  #cleanup tmpdir
   shutil.rmtree(tmpdir)
 
 if __name__ == "__main__":
