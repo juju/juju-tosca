@@ -84,19 +84,25 @@ def parse_metafile(tmpdir):
 def create_charm(name,spec):
   pass
 
-def create_charms(yaml):
+def create_charms(yaml, tmpdir, bundledir):
   #create charms based on yaml file
+  #tmpdir holds the contents of the CSAR file and may need
+  #artifacts pulled from it.
+  #bundledir is the output directory for the bundle file and
+  #file artifacts should be placed there.
   for key,val in yaml['node_types'].items():
     logger.debug("Found node type:"+key)
     create_charm( key, val );
   #pprint.pprint(yaml['node_types'])
+  return("bundle file data for charms")
 
-def create_relations(yaml):
+def create_relations(yaml, tmpdir, bundledir):
   # create relations based on yaml file
-  pass
+  return("bundle file data for relations")
 
-def create_bundle():
-  pass
+def create_bundle(bundle, bundledir):
+  logger.debug(bundle)
+  return("Bundlefilename")
 
 #Main
 def main():
@@ -126,13 +132,13 @@ def main():
       description()
       sys.exit()
     else:
-        assert False, "unhandled option"
+      assert False, "unhandled option"
 
   if not (len(args) == 1):
     usage()
     sys.exit(2)
 
-  # Unpack the zip file into a tmp directory
+  # Unpack the zip file into a temp directory
   zipfn=sys.argv[1] 
   tmpdir=unpack_zip(zipfn)
 
@@ -141,14 +147,20 @@ def main():
 #  logger.debug("Yaml content:")
 #  pprint.pprint(yaml) 
   for t,val in yaml.items():
-      logger.debug("Found yaml root item:"+t)
+    logger.debug("Found yaml root item:"+t)
   
-  create_charms(yaml)
-  create_relations(yaml)
-  create_bundle()
+  bundledir=tempfile.mkdtemp(prefix="BUNDLE_", dir="./")
+
+  cbundle=create_charms(yaml,tmpdir,bundledir)
+  rbundle=create_relations(yaml,tmpdir,bundledir)
+  bundlefile=create_bundle(str(cbundle)+"\n"+str(rbundle),bundledir)
+  print "Import complete, bundle file is: "+bundlefile
   
   #cleanup tmpdir
   shutil.rmtree(tmpdir)
+  #Should we clean up bundledir? On error only? 
+  #For now, clean it up always.
+  shutil.rmtree(bundledir)
 
 if __name__ == "__main__":
   main()
