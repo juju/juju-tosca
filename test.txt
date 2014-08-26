@@ -1,1 +1,2 @@
-test
+To run translator:
+python translator/test.py

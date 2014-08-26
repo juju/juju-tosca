@@ -230,7 +230,7 @@ node_types:
     requirements:
       - host: tosca.nodes.DBMS.MongoDB
     capabilities:
-      database_endpoint: tosca.capabilities.MongoEndpoint
+      - database_endpoint: tosca.capabilities.MongoEndpoint
   tosca.nodes.DBMS.MongoDB:
     derived_from: tosca.nodes.DBMS
     properties:
@@ -240,7 +240,7 @@ node_types:
     requirements:
 
     capabilities:
-      host: 
+      - host: 
         type: Container
         properties:
           valid_node_types: [ tosca.nodes.Database.MongoDB ]
