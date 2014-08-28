@@ -23,7 +23,7 @@ class Node(Resource):
     '''
     Charm class for translating tosca node_type to Juju charm
     '''
-    
+
     SCHEMA = (DERIVED_FROM, DESCRIPTION, PROPERTIES, REQUIREMENTS,
             CAPABILITIES, INTERFACES, ARTIFACTS) = \
            ('derived_from', 'description', 'properties', 'requirements',
@@ -35,7 +35,7 @@ class Node(Resource):
         '''
         super(Node, self).__init__(self.SCHEMA, data)
         self.node_name = node_name
-         
+
     def get_name (self, node_name):
         '''
         Get charm name from the tosca node name

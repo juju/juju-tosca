@@ -20,7 +20,7 @@ class Charm(object):
     '''
     Charm class for Juju charm
     '''
-    
+
     def __init__(self, meta, hooks, config):
         '''
         Constructor
