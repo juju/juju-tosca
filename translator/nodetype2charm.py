@@ -27,7 +27,7 @@ try:
     from yaml import CDumper as Dumper
 except ImportError:
     from yaml import Dumper as Dumper
-    
+
 class Nodetype2Charm(object):
     '''
     classdocs
@@ -135,7 +135,7 @@ class Nodetype2Charm(object):
                 if interface.get(k) is not None:
                     hooks.set_item(v, interface.get(k))
         return hooks
-    
+
     def _translate_config(self, node):
         config = Config()
         properties = node.get_item(Node.PROPERTIES)

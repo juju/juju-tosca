@@ -26,12 +26,12 @@ class Resource(object):
         '''
         self._data = data
         self._schema = schema
-        
+
     def set_item(self, name, value):
         if name not in self._schema:
             raise KeyError(_('"%s" is not valid item') % name)
         self._data[name] = value
-        
+
     def get_item(self, name, defaultvalue=None):
 #         if name not in self._schema:
 #             raise KeyError(_('"%s" is not valid item') % name)
