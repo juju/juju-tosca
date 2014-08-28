@@ -99,6 +99,7 @@ class Nodetype2Charm(object):
 #                 metadata.set_item(Metadata.CATEGORIES, Metadata.CATEGORIES_APPLICATIONS)
 #             if derived == self.TOSCA_SOFTWARE_COMPONENT:
 #                 metadata.set_item(Metadata.CATEGORIES, Metadata.CATEGORIES_APPLICATIONS)
+        metadata.set_item(Metadata.CATEGORIES, Metadata.CATEGORIES_MISC)
         requirements = node.get_item(Node.REQUIREMENTS)
         if requirements is not None:
             for requirement in requirements:

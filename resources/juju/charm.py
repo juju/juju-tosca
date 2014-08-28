@@ -28,7 +28,3 @@ class Charm(object):
         self.meta = meta
         self.hooks = hooks
         self.config = config
-
-
- 
-        

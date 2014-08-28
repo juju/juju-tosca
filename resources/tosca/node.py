@@ -43,10 +43,3 @@ class Node(Resource):
         #depends on the implementation, currently we just return the node name as charm name.
         #Maybe we will change the logic in the future.
         return node_name
-
-#     def getitem(self, section):
-#         if section not in SECTIONS:
-#             raise KeyError(_('"%s" is not valid template section') % section)
-#         return self.node.get(section)
-        
-        
