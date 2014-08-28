@@ -30,4 +30,3 @@ class UnitHooks(Resource):
         Constructor
         '''
         super(UnitHooks, self).__init__(self.SCHEMA, {})
-        
