@@ -143,6 +143,9 @@ class Nodetype2Charm(object):
             for name, content in properties.items():
                     option = Option()
                     prop_type = content.get('type')
+                    if prop_type is None:
+                        #Assume the default type is string
+                        prop_type = 'string'
                     option.set_item(Option.TYPE, self.TOSCA_PROPERTY_TYPE_TO_JUJU_OPTION_TYPE.get(prop_type))
                     default = content.get('default')
                     if default is not None:
