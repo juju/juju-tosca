@@ -33,7 +33,8 @@ class Node(Resource):
         '''
         Initialize the charm object from node name and node content
         '''
-        super(Node, self).__init__(self.SCHEMA, data)
+        super(Node, self).__init__()
+        self._data = data
         self.node_name = node_name
 
     def get_name (self, node_name):

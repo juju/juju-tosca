@@ -31,15 +31,6 @@ class Metadata(Resource):
     CATEGORIES_FILE_SERVERS = 'file-servers'
     CATEGORIES_MISC = 'misc'
 
-
-
-
-    def __init__(self):
-        '''
-        Constructor
-        '''
-        super(Metadata, self).__init__(self.SCHEMA, {})
-
     def add_provide(self, name, interface):
         if self.get_item(self.PROVIDES) is None:
             self.set_item(self.PROVIDES, {})
@@ -64,9 +55,3 @@ class Interface(Resource):
                     ("interface", "limit", "scope", "optional")
     SCOPE_GLOBAL = "global"
     SCOPE_CONTAINER = "container"
-
-    def __init__(self):
-        '''
-        Constructor
-        '''
-        super(Interface, self).__init__(self.SCHEMA, {})
