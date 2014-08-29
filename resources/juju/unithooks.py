@@ -24,9 +24,3 @@ class UnitHooks(Resource):
     SCHEMA = (INSTALL, CONFIG_CHANGED, START, UPGRADE_CHARM,
              STOP) = ('install', 'config-changed', 'start', 
                       'upgrade-charm', 'stop')
-
-    def __init__(self):
-        '''
-        Constructor
-        '''
-        super(UnitHooks, self).__init__(self.SCHEMA, {})

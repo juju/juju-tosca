@@ -20,21 +20,20 @@ class Resource(object):
     '''
     classdocs
     '''
-    def __init__(self, schema, data):
+    def __init__(self):
         '''
         Constructor
         '''
-        self._data = data
-        self._schema = schema
+        self._data = {}
 
     def set_item(self, name, value):
-        if name not in self._schema:
+        if name not in self.SCHEMA:
             raise KeyError(_('"%s" is not valid item') % name)
         self._data[name] = value
 
     def get_item(self, name, defaultvalue=None):
-#         if name not in self._schema:
-#             raise KeyError(_('"%s" is not valid item') % name)
+        if name not in self.SCHEMA:
+            raise KeyError(_('"%s" is not valid item') % name)
         return self._data.get(name, defaultvalue)
 
     def get_data(self):

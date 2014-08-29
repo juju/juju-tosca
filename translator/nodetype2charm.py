@@ -47,9 +47,7 @@ class Nodetype2Charm(object):
         self._nodetype = nodetype
         self._name = name
         self._charm_path = path + '/' + name + '_charm'
-        if os.path.isdir(self._charm_path):
-            pass
-        else:
+        if not os.path.isdir(self._charm_path):
             os.mkdir(self._charm_path)
         if os.path.isdir(self._charm_path + "/" + self.HOOKS_DIR_NAME):
             pass
@@ -133,7 +131,10 @@ class Nodetype2Charm(object):
             interface = interfaces.values()[0]
             for k, v in self.TOSCA_OPERATIONS_TO_JUJU_HOOKS.items():
                 if interface.get(k) is not None:
-                    hooks.set_item(v, interface.get(k))
+                    if hooks.get_item(v) is not None:
+                        hooks.set_item(v, hooks.get_item(v) + interface.get(k))
+                    else:
+                        hooks.set_item(v, interface.get(k))
         return hooks
 
     def _translate_config(self, node):

@@ -23,11 +23,11 @@ class Config(Resource):
     '''
     SCHEMA = (OPTIONS) = ('options')
 
-    def __init__(self):
-        '''
-        Constructor
-        '''
-        super(Config, self).__init__(self.SCHEMA, {})
+#     def __init__(self):
+#         '''
+#         Constructor
+#         '''
+#         super(Config, self).__init__(cls.SCHEMA, {})
 
     def add_option(self, name, option):
         if self.get_item(self.OPTIONS) is None:
@@ -44,9 +44,3 @@ class Option(Resource):
     classdocs
     '''
     SCHEMA = (TYPE, DEFAULT, DESCRIPTION) = ('type', 'default', 'description')
-
-    def __init__(self):
-        '''
-        Constructor
-        '''
-        super(Option, self).__init__(self.SCHEMA, {})
