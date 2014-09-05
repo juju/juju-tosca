@@ -1,18 +1,18 @@
 #!/usr/bin/python
-
+#
 # Copyright 2014 IBM Corporation 
 # Zhaizhixiang (zhzxzhai@cn.ibm.com)
-
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-
+#
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from resources.tosca.node import Node
@@ -77,7 +77,6 @@ class Nodetype2Charm(object):
             operation_file = path + '/' + k
             f = open(operation_file,'w')
             f.write(str(v))
-            #os.chmod(operation_file, self.HOOKS_PERMISSION)
             f.close()
 
     def _parse_node_type(self): 
@@ -90,13 +89,6 @@ class Nodetype2Charm(object):
         description = node.get_item(Node.DESCRIPTION)
         if description is not None:
             metadata.set_item(Metadata.DESCRIPTION, description)
-        # FIXME: If we could mapping juju categories to tosca nodetype derived?.
-#         derived = self._nodetype.get(Node.DERIVED_FROM)
-#         if derived is not None:
-#             if derived == self.TOSCA_SOFTWARE_COMPONENT:
-#                 metadata.set_item(Metadata.CATEGORIES, Metadata.CATEGORIES_APPLICATIONS)
-#             if derived == self.TOSCA_SOFTWARE_COMPONENT:
-#                 metadata.set_item(Metadata.CATEGORIES, Metadata.CATEGORIES_APPLICATIONS)
         metadata.set_item(Metadata.CATEGORIES, Metadata.CATEGORIES_MISC)
         requirements = node.get_item(Node.REQUIREMENTS)
         if requirements is not None:
@@ -132,7 +124,7 @@ class Nodetype2Charm(object):
             for k, v in self.TOSCA_OPERATIONS_TO_JUJU_HOOKS.items():
                 if interface.get(k) is not None:
                     if hooks.get_item(v) is not None:
-                        hooks.set_item(v, hooks.get_item(v) + interface.get(k))
+                        hooks.set_item(hooks.get_item(v) + interface.get(k))
                     else:
                         hooks.set_item(v, interface.get(k))
         return hooks
