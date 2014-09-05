@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# Copyright 2014 IBM Corporation 
+# Copyright 2014 IBM Corporation
 # Michael Chase-Salerno(bratac@linux.vnet.ibm.com)
 
 # This program is free software: you can redistribute it and/or modify
@@ -29,139 +29,149 @@ import shutil
 from inspect import currentframe, getframeinfo
 
 try:
-  from yaml import CSafeLoader as Loader
+    from yaml import CSafeLoader as Loader
 except ImportError:
-  from yaml import SafeLoader as Loader
+    from yaml import SafeLoader as Loader
+
 
 def usage():
-  print 'juju-tosca-import.py [--help] [--description] <CSAR zip file>'
+    print 'juju-tosca-import.py [--help] [--description] <CSAR zip file>'
+
 
 def description():
-  print """Juju plugin to import a orchestration specification from 
-  a CSAR file containing YAML files"""
+    print """Juju plugin to import a orchestration specification from
+    a CSAR file containing YAML files"""
+
 
 def parse_yaml(yamlfile):
-  #open the yaml file, and load the content
-  try:
-    yf=open(yamlfile,"r")
-  except:
-    print "Unable to open yaml file", yamlfile
-    sys.exit(1)
+    # open the yaml file, and load the content
+    try:
+        yf = open(yamlfile, "r")
+    except:
+        print "Unable to open yaml file", yamlfile
+        sys.exit(1)
 
-  content=yf.read()
-  yc=yaml.load(content, Loader=Loader)
-  return yc
- 
+    content = yf.read()
+    yc = yaml.load(content, Loader=Loader)
+    return yc
+
+
 def unpack_zip(zipfn):
-  #zip file needs to be in the TOSCA CSAR format
-  try:
-    zip = zipfile.ZipFile(zipfn, 'r') 
-  except:
-    print "Unable to open zip file", zipfn
-    usage()
-    sys.exit(2)
- 
-  logger.debug(zip.namelist())
-  tmpdir=tempfile.mkdtemp(prefix="CSAR_", dir="./")
-  zip.extractall(tmpdir)
-  return tmpdir
+    # zip file needs to be in the TOSCA CSAR format
+    try:
+        zip = zipfile.ZipFile(zipfn, 'r')
+    except:
+        print "Unable to open zip file", zipfn
+        usage()
+        sys.exit(2)
+
+    logger.debug(zip.namelist())
+    tmpdir = tempfile.mkdtemp(prefix="CSAR_", dir="./")
+    zip.extractall(tmpdir)
+    return tmpdir
+
 
 def parse_metafile(tmpdir):
-  if not os.path.isfile(tmpdir+"/TOSCA-Metadata/TOSCA.meta"):
-    print "TOSCA.meta not found in CSAR file"
-    sys.exit(1)
-  tfile = open(tmpdir+'/TOSCA-Metadata/TOSCA.meta', 'r')
-  tlines = tfile.readlines()
-  for line in tlines:
-    if (line.startswith("Name")):
-      attr,value = line.split(":",2)
-      # if it's a yaml file pointer, need to find it here, and parse it?
-      logger.debug("Found yaml file: "+tmpdir+"/"+value.strip())
-      # Need to handle multiple yaml files
-      yamlcontent=parse_yaml(tmpdir+"/"+value.strip())
-  return yamlcontent
+    if not os.path.isfile(tmpdir+"/TOSCA-Metadata/TOSCA.meta"):
+        print "TOSCA.meta not found in CSAR file"
+        sys.exit(1)
+    tfile = open(tmpdir+'/TOSCA-Metadata/TOSCA.meta', 'r')
+    tlines = tfile.readlines()
+    for line in tlines:
+        if (line.startswith("Name")):
+            attr, value = line.split(":", 2)
+            # if it's a yaml file pointer, need to find it here, and parse it?
+            logger.debug("Found yaml file: " + tmpdir + "/" + value.strip())
+            # Need to handle multiple yaml files
+            yamlcontent = parse_yaml(tmpdir + "/" + value.strip())
+            return yamlcontent
 
-def create_charm(name,spec):
-  pass
+
+def create_charm(name, spec):
+    pass
+
 
 def create_charms(yaml, tmpdir, bundledir):
-  #create charms based on yaml file
-  #tmpdir holds the contents of the CSAR file and may need
-  #artifacts pulled from it.
-  #bundledir is the output directory for the bundle file and
-  #file artifacts should be placed there.
-  for key,val in yaml['node_types'].items():
-    logger.debug("Found node type:"+key)
-    create_charm( key, val );
-  #pprint.pprint(yaml['node_types'])
-  return("bundle file data for charms")
+    # create charms based on yaml file
+    # tmpdir holds the contents of the CSAR file and may need
+    # artifacts pulled from it.
+    # bundledir is the output directory for the bundle file and
+    # file artifacts should be placed there.
+    for key, val in yaml['node_types'].items():
+        logger.debug("Found node type:" + key)
+        create_charm(key, val)
+        # pprint.pprint(yaml['node_types'])
+        return("bundle file data for charms")
+
 
 def create_relations(yaml, tmpdir, bundledir):
-  # create relations based on yaml file
-  return("bundle file data for relations")
+    # create relations based on yaml file
+    return("bundle file data for relations")
+
 
 def create_bundle(bundle, bundledir):
-  logger.debug(bundle)
-  return("Bundlefilename")
+    logger.debug(bundle)
+    return("Bundlefilename")
 
-#Main
+
+# Main
 def main():
-  #setup debug logging  
-  global logger
-  logger = logging.getLogger('root')
-  #FORMAT = "[%(filename)s:%(lineno)s-%(funcName)s()]%(message)s"
-  FORMAT = "[%(lineno)s-%(funcName)s] %(message)s"
-  logging.basicConfig(format=FORMAT)
-  logger.setLevel(logging.DEBUG)
-   
-  #input params
-  zipfn=''
-  yamlfile=''
-  try:
-    opts, args = getopt.getopt(sys.argv[1:], "hd", ["help", "description"])
-  except getopt.GetoptError as err:
-    print str(err)
-    usage()
-    sys.exit(2)
+    # setup debug logging
+    global logger
+    logger = logging.getLogger('root')
+    # FORMAT = "[%(filename)s:%(lineno)s-%(funcName)s()]%(message)s"
+    FORMAT = "[%(lineno)s-%(funcName)s] %(message)s"
+    logging.basicConfig(format=FORMAT)
+    logger.setLevel(logging.DEBUG)
 
-  for opt,arg in opts:
-    if opt in ("-h", "--help"):
-      usage()
-      sys.exit()
-    elif opt in ("-d", "--description"):
-      description()
-      sys.exit()
-    else:
-      assert False, "unhandled option"
+    # input params
+    zipfn = ''
+    yamlfile = ''
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "hd", ["help", "description"])
+    except getopt.GetoptError as err:
+        print str(err)
+        usage()
+        sys.exit(2)
 
-  if not (len(args) == 1):
-    usage()
-    sys.exit(2)
+    for opt, arg in opts:
+        if opt in ("-h", "--help"):
+            usage()
+            sys.exit()
+        elif opt in ("-d", "--description"):
+            description()
+            sys.exit()
+        else:
+            assert False, "unhandled option"
 
-  # Unpack the zip file into a temp directory
-  zipfn=sys.argv[1] 
-  tmpdir=unpack_zip(zipfn)
+    if not (len(args) == 1):
+        usage()
+        sys.exit(2)
 
-  # Read the TOSCA.meta file
-  yaml=parse_metafile(tmpdir)
-#  logger.debug("Yaml content:")
-#  pprint.pprint(yaml) 
-  for t,val in yaml.items():
-    logger.debug("Found yaml root item:"+t)
-  
-  bundledir=tempfile.mkdtemp(prefix="BUNDLE_", dir="./")
+    # Unpack the zip file into a temp directory
+    zipfn = sys.argv[1]
+    tmpdir = unpack_zip(zipfn)
 
-  cbundle=create_charms(yaml,tmpdir,bundledir)
-  rbundle=create_relations(yaml,tmpdir,bundledir)
-  bundlefile=create_bundle(str(cbundle)+"\n"+str(rbundle),bundledir)
-  print "Import complete, bundle file is: "+bundlefile
-  
-  #cleanup tmpdir
-  shutil.rmtree(tmpdir)
-  #Should we clean up bundledir? On error only? 
-  #For now, clean it up always.
-  shutil.rmtree(bundledir)
+    # Read the TOSCA.meta file
+    yaml = parse_metafile(tmpdir)
+    # logger.debug("Yaml content:")
+    # pprint.pprint(yaml)
+    for t, val in yaml.items():
+        logger.debug("Found yaml root item:" + t)
+
+    bundledir = tempfile.mkdtemp(prefix="BUNDLE_", dir="./")
+
+    cbundle = create_charms(yaml, tmpdir, bundledir)
+    rbundle = create_relations(yaml, tmpdir, bundledir)
+    bundlefile = create_bundle(str(cbundle) + "\n" + str(rbundle), bundledir)
+    print "Import complete, bundle file is: " + bundlefile
+
+    # cleanup tmpdir
+    shutil.rmtree(tmpdir)
+    # Should we clean up bundledir? On error only?
+    # For now, clean it up always.
+    shutil.rmtree(bundledir)
+
 
 if __name__ == "__main__":
-  main()
-
+    main()
