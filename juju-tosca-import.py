@@ -26,6 +26,7 @@ import tempfile
 import os.path
 import logging
 import shutil
+from translator.nodetype2charm import Nodetype2Charm
 from inspect import currentframe, getframeinfo
 
 try:
@@ -99,8 +100,9 @@ def create_charms(yaml, tmpdir, bundledir):
     # file artifacts should be placed there.
     for key, val in yaml['node_types'].items():
         logger.debug("Found node type:" + key)
-        create_charm(key, val)
-        # pprint.pprint(yaml['node_types'])
+        translator = Nodetype2Charm(key, val, bundledir)
+        translator.execute()
+
         return("bundle file data for charms")
 
 
@@ -126,7 +128,6 @@ def main():
 
     # input params
     zipfn = ''
-    yamlfile = ''
     try:
         opts, args = getopt.getopt(sys.argv[1:], "hd", ["help", "description"])
     except getopt.GetoptError as err:
@@ -169,8 +170,7 @@ def main():
     # cleanup tmpdir
     shutil.rmtree(tmpdir)
     # Should we clean up bundledir? On error only?
-    # For now, clean it up always.
-    shutil.rmtree(bundledir)
+    # shutil.rmtree(bundledir)
 
 
 if __name__ == "__main__":
