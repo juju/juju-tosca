@@ -17,8 +17,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import yaml
-import pprint
 import getopt
 import sys
 import zipfile
@@ -26,7 +24,9 @@ import tempfile
 import os.path
 import logging
 import shutil
-from translator.nodetype2charm import Nodetype2Charm
+from jujutranslator.nodetype2charm import Nodetype2Charm
+from translator.toscalib.tosca_template import ToscaTemplate
+import pprint
 from inspect import currentframe, getframeinfo
 
 try:
@@ -42,19 +42,6 @@ def usage():
 def description():
     print """Juju plugin to import a orchestration specification from
     a CSAR file containing YAML files"""
-
-
-def parse_yaml(yamlfile):
-    # open the yaml file, and load the content
-    try:
-        yf = open(yamlfile, "r")
-    except:
-        print "Unable to open yaml file", yamlfile
-        sys.exit(1)
-
-    content = yf.read()
-    yc = yaml.load(content, Loader=Loader)
-    return yc
 
 
 def unpack_zip(zipfn):
@@ -84,12 +71,10 @@ def parse_metafile(tmpdir):
             # if it's a yaml file pointer, need to find it here, and parse it?
             logger.debug("Found yaml file: " + tmpdir + "/" + value.strip())
             # Need to handle multiple yaml files
-            yamlcontent = parse_yaml(tmpdir + "/" + value.strip())
+            tosca_tpl = os.path.join(tmpdir + "/" + value.strip())
+            yamlcontent = ToscaTemplate(tosca_tpl)
+
             return yamlcontent
-
-
-def create_charm(name, spec):
-    pass
 
 
 def create_charms(yaml, tmpdir, bundledir):
@@ -98,12 +83,12 @@ def create_charms(yaml, tmpdir, bundledir):
     # artifacts pulled from it.
     # bundledir is the output directory for the bundle file and
     # file artifacts should be placed there.
-    for key, val in yaml['node_types'].items():
-        logger.debug("Found node type:" + key)
-        translator = Nodetype2Charm(key, val, bundledir)
-        translator.execute()
+    for nodetmp in yaml.nodetemplates:
+        logger.debug("Found node type:" + nodetmp.name)
+        #translator = Nodetype2Charm(nodetmp.name, nodetmp, bundledir)
+        #translator.execute()
 
-        return("bundle file data for charms")
+    return("bundle file data for charms")
 
 
 def create_relations(yaml, tmpdir, bundledir):
@@ -152,15 +137,10 @@ def main():
     # Unpack the zip file into a temp directory
     zipfn = sys.argv[1]
     tmpdir = unpack_zip(zipfn)
+    bundledir = tempfile.mkdtemp(prefix="BUNDLE_", dir="./")
 
     # Read the TOSCA.meta file
     yaml = parse_metafile(tmpdir)
-    # logger.debug("Yaml content:")
-    # pprint.pprint(yaml)
-    for t, val in yaml.items():
-        logger.debug("Found yaml root item:" + t)
-
-    bundledir = tempfile.mkdtemp(prefix="BUNDLE_", dir="./")
 
     cbundle = create_charms(yaml, tmpdir, bundledir)
     rbundle = create_relations(yaml, tmpdir, bundledir)
