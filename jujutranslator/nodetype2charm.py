@@ -40,13 +40,14 @@ class Nodetype2Charm(object):
     CONFIG_FILE_NAME = 'config.yaml'
     HOOKS_DIR_NAME = 'hooks'
     HOOKS_PERMISSION = 777 
-    def __init__(self, name, nodetype, path):
+    def __init__(self, nodetpl, path):
         '''
         Constructor
         '''
-        self._nodetype = nodetype
-        self._name = name
-        self._charm_path = path + '/' + name + '_charm'
+        print "libProps:" + str(sorted([p.name for p in nodetpl.properties]))
+        self._nodetype = nodetpl.type
+        self._name = nodetpl.name
+        self._charm_path = path + '/' + nodetpl.name + '_charm'
         if not os.path.isdir(self._charm_path):
             os.mkdir(self._charm_path)
         if os.path.isdir(self._charm_path + "/" + self.HOOKS_DIR_NAME):

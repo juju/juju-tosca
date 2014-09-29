@@ -84,15 +84,33 @@ def create_charms(yaml, tmpdir, bundledir):
     # bundledir is the output directory for the bundle file and
     # file artifacts should be placed there.
     for nodetmp in yaml.nodetemplates:
-        logger.debug("Found node type:" + nodetmp.name)
-        translator = Nodetype2Charm(nodetmp.name, nodetmp, bundledir)
-        translator.execute()
+        logger.debug("Found node type:" + nodetmp.name + nodetmp.type)
+        print "Props:" + str(sorted([p.name for p in nodetmp.properties]))
+        print "Caps:" + str(sorted([p.name for p in nodetmp.capabilities]))
+        print 
+        translator = Nodetype2Charm(nodetmp, bundledir)
+        #translator = Nodetype2Charm(nodetmp.name, nodetmp, bundledir)
+        #translator.execute()
+        print
 
     return("bundle file data for charms")
 
 
 def create_relations(yaml, tmpdir, bundledir):
     # create relations based on yaml file
+    for nodetmp in yaml.nodetemplates:
+        logger.debug("Found rel node type:" + nodetmp.name + nodetmp.type)
+#        print "ntr" + str(nodetmp.relationship)
+  #      print str(nodetmp.relationship.items())
+        for relation, node in nodetmp.relationship.items():
+            print relation.type
+            print node.name
+ #       for rel in nodetmp.relationship.keys
+ #           print "Rel:" + nodetmp.name + rel
+        #print "Relkeys:" + str([x.type for x in nodetmp.relationship.keys()])
+        #print "Relvals:" + str([x.type for x in nodetmp.relationship.values()])
+        print
+    
     return("bundle file data for relations")
 
 
