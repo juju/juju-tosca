@@ -85,8 +85,8 @@ def create_charms(yaml, tmpdir, bundledir):
     # file artifacts should be placed there.
     for nodetmp in yaml.nodetemplates:
         logger.debug("Found node type:" + nodetmp.name)
-        #translator = Nodetype2Charm(nodetmp.name, nodetmp, bundledir)
-        #translator.execute()
+        translator = Nodetype2Charm(nodetmp.name, nodetmp, bundledir)
+        translator.execute()
 
     return("bundle file data for charms")
 

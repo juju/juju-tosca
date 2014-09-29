@@ -124,7 +124,7 @@ class Nodetype2Charm(object):
             for k, v in self.TOSCA_OPERATIONS_TO_JUJU_HOOKS.items():
                 if interface.get(k) is not None:
                     if hooks.get_item(v) is not None:
-                        hooks.set_item(hooks.get_item(v) + interface.get(k))
+                        hooks.set_item(v, hooks.get_item(v) + interface.get(k))
                     else:
                         hooks.set_item(v, interface.get(k))
         return hooks
