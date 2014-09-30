@@ -179,6 +179,8 @@ def main():
     # TODO should use this to mkdir, but its annoying right now
     # bundledir = tempfile.mkdtemp(prefix="BUNDLE_", dir="./")
     bundledir = "./BUNDLE"
+    if not os.path.exists(bundledir):
+        os.mkdir(bundledir)
     cbundle = create_charms(yaml, tmpdir, bundledir)
     rbundle = create_relations(yaml, tmpdir, bundledir)
     bundlefile = create_bundle(str(cbundle), str(rbundle), bundledir)
