@@ -24,9 +24,9 @@ import tempfile
 import os.path
 import logging
 import shutil
-from jujutranslator.nodetype2charm import Nodetype2Charm
+# from jujutranslator.nodetype2charm import Nodetype2Charm
 from translator.toscalib.tosca_template import ToscaTemplate
-import pprint
+from pprint import pprint
 from inspect import currentframe, getframeinfo
 
 try:
@@ -63,14 +63,18 @@ def parse_metafile(tmpdir):
     if not os.path.isfile(tmpdir+"/TOSCA-Metadata/TOSCA.meta"):
         print "TOSCA.meta not found in CSAR file"
         sys.exit(1)
-    tfile = open(tmpdir+'/TOSCA-Metadata/TOSCA.meta', 'r')
+    try:
+        tfile = open(tmpdir+'/TOSCA-Metadata/TOSCA.meta', 'r')
+    except:
+        print "Couldn't open Tosca metafile"
+        sys.exit(2)
     tlines = tfile.readlines()
     for line in tlines:
         if (line.startswith("Name")):
             attr, value = line.split(":", 2)
             # if it's a yaml file pointer, need to find it here, and parse it?
             logger.debug("Found yaml file: " + tmpdir + "/" + value.strip())
-            # Need to handle multiple yaml files
+            # TODO Need to handle multiple yaml files
             tosca_tpl = os.path.join(tmpdir + "/" + value.strip())
             yamlcontent = ToscaTemplate(tosca_tpl)
 
@@ -83,40 +87,53 @@ def create_charms(yaml, tmpdir, bundledir):
     # artifacts pulled from it.
     # bundledir is the output directory for the bundle file and
     # file artifacts should be placed there.
+    cyaml = "\tservices:\n"
     for nodetmp in yaml.nodetemplates:
         logger.debug("Found node type:" + nodetmp.name + nodetmp.type)
+        cyaml += "\t\t" + nodetmp.name + ":\n"
         print "Props:" + str(sorted([p.name for p in nodetmp.properties]))
         print "Caps:" + str(sorted([p.name for p in nodetmp.capabilities]))
-        print 
-        translator = Nodetype2Charm(nodetmp, bundledir)
-        #translator = Nodetype2Charm(nodetmp.name, nodetmp, bundledir)
-        #translator.execute()
+        print
+        cyaml += "\t\t\tOptions:\n"
+        for prop in nodetmp.properties:
+            pprint(prop.value)
+            # TODO figure out proper mapping to bundle
+            # TODO how to handle props that have get_input values?
+            cyaml += "\t\t\t\t" + prop.name + ":" + "\n"
+
+        # TODO not sure these classes are warranted with toscalib
+        # doing the heavy lifting on the parser.
+        # translator = Nodetype2Charm(nodetmp, bundledir)
+        # translator.execute()
         print
 
-    return("bundle file data for charms")
+    return(cyaml)
 
 
 def create_relations(yaml, tmpdir, bundledir):
+    ryaml = "\trelations:\n"
     # create relations based on yaml file
     for nodetmp in yaml.nodetemplates:
-        logger.debug("Found rel node type:" + nodetmp.name + nodetmp.type)
-#        print "ntr" + str(nodetmp.relationship)
-  #      print str(nodetmp.relationship.items())
+        logger.debug("Found rel node:" + nodetmp.name + " " + nodetmp.type)
         for relation, node in nodetmp.relationship.items():
-            print relation.type
-            print node.name
- #       for rel in nodetmp.relationship.keys
- #           print "Rel:" + nodetmp.name + rel
-        #print "Relkeys:" + str([x.type for x in nodetmp.relationship.keys()])
-        #print "Relvals:" + str([x.type for x in nodetmp.relationship.values()])
-        print
-    
-    return("bundle file data for relations")
+            ryaml += "\t\t" + nodetmp.name + ":" + node.name + "\n"
+
+    return(ryaml)
 
 
-def create_bundle(bundle, bundledir):
-    logger.debug(bundle)
-    return("Bundlefilename")
+def create_bundle(cyaml, ryaml, bundledir):
+    logger.debug(bundledir)
+    bfn = bundledir + "/tosca.yaml"
+    try:
+        bfile = open(bfn, 'w')
+    except:
+        print ("Couldn't open bundlefile")
+        sys.exit(2)
+    bfile.write("toscaImport:\n")
+    bfile.write(cyaml + "\n")
+    bfile.write(ryaml + "\n")
+    bfile.close()
+    return(bfn)
 
 
 # Main
@@ -155,14 +172,16 @@ def main():
     # Unpack the zip file into a temp directory
     zipfn = sys.argv[1]
     tmpdir = unpack_zip(zipfn)
-    bundledir = tempfile.mkdtemp(prefix="BUNDLE_", dir="./")
 
     # Read the TOSCA.meta file
     yaml = parse_metafile(tmpdir)
 
+    # TODO should use this to mkdir, but its annoying right now
+    # bundledir = tempfile.mkdtemp(prefix="BUNDLE_", dir="./")
+    bundledir = "./BUNDLE"
     cbundle = create_charms(yaml, tmpdir, bundledir)
     rbundle = create_relations(yaml, tmpdir, bundledir)
-    bundlefile = create_bundle(str(cbundle) + "\n" + str(rbundle), bundledir)
+    bundlefile = create_bundle(str(cbundle), str(rbundle), bundledir)
     print "Import complete, bundle file is: " + bundlefile
 
     # cleanup tmpdir
