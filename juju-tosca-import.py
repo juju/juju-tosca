@@ -94,12 +94,25 @@ def create_charms(yaml, tmpdir, bundledir):
         print "Props:" + str(sorted([p.name for p in nodetmp.properties]))
         print "Caps:" + str(sorted([p.name for p in nodetmp.capabilities]))
         print
-        cyaml += "\t\t\tOptions:\n"
+        tyaml = ""
         for prop in nodetmp.properties:
-            pprint(prop.value)
             # TODO figure out proper mapping to bundle
             # TODO how to handle props that have get_input values?
-            cyaml += "\t\t\t\t" + prop.name + ":" + "\n"
+            # This temporarily skips any "non-stringable" values
+            if isinstance(prop.value, (basestring, int, float, long)):
+                tyaml += "\t\t\t\t" + prop.name + ":" + str(prop.value) + "\n"
+        if tyaml:
+            cyaml += "\t\t\tOptions:\n"
+            cyaml += tyaml
+
+        tyaml = ""
+        if nodetmp.requirements:
+            for i in nodetmp.requirements:
+                for req, node_name in i.items():
+                    tyaml += "\t\t\t\t" + req + ":" + node_name + "\n"
+        if tyaml:
+            cyaml += "\t\t\tConstraints:\n"
+            cyaml += tyaml
 
         # TODO not sure these classes are warranted with toscalib
         # doing the heavy lifting on the parser.
@@ -116,7 +129,7 @@ def create_relations(yaml, tmpdir, bundledir):
     for nodetmp in yaml.nodetemplates:
         logger.debug("Found rel node:" + nodetmp.name + " " + nodetmp.type)
         for relation, node in nodetmp.relationship.items():
-            ryaml += "\t\t" + nodetmp.name + ":" + node.name + "\n"
+            ryaml += "\t\t- " + nodetmp.name + "," + node.name + "\n"
 
     return(ryaml)
 
