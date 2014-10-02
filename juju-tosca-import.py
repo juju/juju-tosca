@@ -81,6 +81,18 @@ def parse_metafile(tmpdir):
             return yamlcontent
 
 
+def create_charm(nodetmp, tmpdir, bundledir):
+    # create a charm based on the node template
+    logger.debug("Creating charm for:" + nodetmp.name + " " + nodetmp.type)
+    charmdir = bundledir + "/charms/" + nodetmp.name
+    if not os.path.exists(charmdir):
+        os.makedirs(charmdir)
+    for int in nodetmp.interfaces:
+        if int.type == "tosca.interfaces.node.Lifecycle":
+            print(int.name, int.implementation, int.input)
+
+
+
 def create_charms(yaml, tmpdir, bundledir):
     # create charms based on yaml file
     # tmpdir holds the contents of the CSAR file and may need
@@ -91,9 +103,9 @@ def create_charms(yaml, tmpdir, bundledir):
     for nodetmp in yaml.nodetemplates:
         logger.debug("Found node type:" + nodetmp.name + nodetmp.type)
         cyaml += "\t\t" + nodetmp.name + ":\n"
+        cyaml += "\t\t\tCharm: " + nodetmp.name + "\n"
         print "Props:" + str(sorted([p.name for p in nodetmp.properties]))
         print "Caps:" + str(sorted([p.name for p in nodetmp.capabilities]))
-        print
         tyaml = ""
         for prop in nodetmp.properties:
             # TODO figure out proper mapping to bundle
@@ -114,6 +126,7 @@ def create_charms(yaml, tmpdir, bundledir):
             cyaml += "\t\t\tConstraints:\n"
             cyaml += tyaml
 
+        create_charm(nodetmp, tmpdir, bundledir)
         # TODO not sure these classes are warranted with toscalib
         # doing the heavy lifting on the parser.
         # translator = Nodetype2Charm(nodetmp, bundledir)
