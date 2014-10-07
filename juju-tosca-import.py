@@ -29,11 +29,6 @@ from translator.toscalib.tosca_template import ToscaTemplate
 from pprint import pprint
 from inspect import currentframe, getframeinfo
 
-try:
-    from yaml import CSafeLoader as Loader
-except ImportError:
-    from yaml import SafeLoader as Loader
-
 
 def usage():
     print 'juju-tosca-import.py [--help] [--description] <CSAR zip file>'
@@ -46,6 +41,7 @@ def description():
 
 def unpack_zip(zipfn):
     # zip file needs to be in the TOSCA CSAR format
+    # TODO This may be unnecessary if/when toscalib does it
     try:
         zip = zipfile.ZipFile(zipfn, 'r')
     except:
@@ -60,6 +56,8 @@ def unpack_zip(zipfn):
 
 
 def parse_metafile(tmpdir):
+    # Parse the TOSCA.meta file looking for yaml definitions
+    # TODO This may be unnecessary if/when toscalib does it
     if not os.path.isfile(tmpdir+"/TOSCA-Metadata/TOSCA.meta"):
         print "TOSCA.meta not found in CSAR file"
         sys.exit(1)
@@ -87,14 +85,46 @@ def create_charm(nodetmp, tmpdir, bundledir):
     charmdir = bundledir + "/charms/" + nodetmp.name
     if not os.path.exists(charmdir):
         os.makedirs(charmdir)
+    if not os.path.exists(charmdir + "/hooks"):
+        os.makedirs(charmdir + "/hooks")
+    metafn = charmdir + "/metadata.yaml"
+    try:
+        metafile = open(metafn, 'w')
+    except:
+        print ("Couldn't open metadata.yaml")
+        sys.exit(2)
+    metafile.write("Name: " + nodetmp.name + "\n")
+    metafile.write("Summary: juju-tosca imported charm\n")
+    metafile.write("Description: juju-tosca imported charm\n")
+    # TODO: Write capabilities, provides & requires
+    metafile.write("Provides:\n")
+    for c in nodetmp.capabilities:
+        metafile.write("\t" + c.name + "\n")
+    metafile.write("Requires:\n")
+    #for r in nodetmp.requirements:
+    #    print r
+        #metafile.write("\t" + r.key + "\n")
+
+    metafile.close()
+
+    # Create the hooks
     for int in nodetmp.interfaces:
         if int.type == "tosca.interfaces.node.Lifecycle":
-            print(int.name, int.implementation, int.input)
+            if int.name == "configure":
+                print("found config", int.name, int.implementation, int.input)
+                # copy the script
+                # shutil.copy(int.implementation, charmdir)
+                # create the wrapper
+            elif int.name == "start":
+                print("found start", int.name, int.implementation, int.input)
+            elif int.name == "create":
+                print("found create", int.name, int.implementation, int.input)
+            else:
+                print(int.name, int.implementation, int.input)
 
 
-
-def create_charms(yaml, tmpdir, bundledir):
-    # create charms based on yaml file
+def create_nodes(yaml, tmpdir, bundledir):
+    # create node templates based on yaml file
     # tmpdir holds the contents of the CSAR file and may need
     # artifacts pulled from it.
     # bundledir is the output directory for the bundle file and
@@ -207,7 +237,7 @@ def main():
     bundledir = "./BUNDLE"
     if not os.path.exists(bundledir):
         os.mkdir(bundledir)
-    cbundle = create_charms(yaml, tmpdir, bundledir)
+    cbundle = create_nodes(yaml, tmpdir, bundledir)
     rbundle = create_relations(yaml, tmpdir, bundledir)
     bundlefile = create_bundle(str(cbundle), str(rbundle), bundledir)
     print "Import complete, bundle file is: " + bundlefile
