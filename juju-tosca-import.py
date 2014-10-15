@@ -75,18 +75,24 @@ def parse_metafile(tmpdir):
             # TODO Need to handle multiple yaml files
             tosca_tpl = os.path.join(tmpdir + "/" + value.strip())
             yamlcontent = ToscaTemplate(tosca_tpl)
-
             return yamlcontent
 
 
 def create_charm(nodetmp, tmpdir, bundledir):
     # create a charm based on the node template
     logger.debug("Creating charm for:" + nodetmp.name + " " + nodetmp.type)
+    # Make dirs and open files
     charmdir = bundledir + "/charms/" + nodetmp.name
     if not os.path.exists(charmdir):
         os.makedirs(charmdir)
     if not os.path.exists(charmdir + "/hooks"):
         os.makedirs(charmdir + "/hooks")
+    configfn = charmdir + "/config.yaml"
+    try:
+        configfile = open(configfn, 'w')
+    except:
+        print ("Couldn't open config.yaml")
+        sys.exit(2)
     metafn = charmdir + "/metadata.yaml"
     try:
         metafile = open(metafn, 'w')
@@ -96,6 +102,7 @@ def create_charm(nodetmp, tmpdir, bundledir):
     metafile.write("Name: " + nodetmp.name + "\n")
     metafile.write("Summary: juju-tosca imported charm\n")
     metafile.write("Description: juju-tosca imported charm\n")
+
     # TODO: Write capabilities, provides & requires
     metafile.write("Provides:\n")
     for c in nodetmp.capabilities:
@@ -112,6 +119,14 @@ def create_charm(nodetmp, tmpdir, bundledir):
         if int.type == "tosca.interfaces.node.Lifecycle":
             if int.name == "configure":
                 print("found config", int.name, int.implementation, int.input)
+                configfile.write("options:\n")
+                for key, val in int.input.items():
+                    print "input: " + key
+                    print val
+                    configfile.write("\t:" + key + "\n")
+                    configfile.write("\t\tdefault:\n")
+                    configfile.write("\t\tdescription: TOSCA imported option\n")
+                    configfile.write("\t\ttype: string\n")
                 # copy the script
                 # shutil.copy(int.implementation, charmdir)
                 # create the wrapper
@@ -121,6 +136,7 @@ def create_charm(nodetmp, tmpdir, bundledir):
                 print("found create", int.name, int.implementation, int.input)
             else:
                 print(int.name, int.implementation, int.input)
+    configfile.close()
 
 
 def create_nodes(yaml, tmpdir, bundledir):
