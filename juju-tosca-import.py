@@ -106,11 +106,11 @@ def create_charm(nodetmp, tmpdir, bundledir):
     # TODO: Write capabilities, provides & requires
     metafile.write("Provides:\n")
     for c in nodetmp.capabilities:
-        metafile.write("\t" + c.name + "\n")
+        metafile.write("  " + c.name + "\n")
     metafile.write("Requires:\n")
     #for r in nodetmp.requirements:
     #    print r
-        #metafile.write("\t" + r.key + "\n")
+        #metafile.write("  " + r.key + "\n")
 
     metafile.close()
 
@@ -123,10 +123,10 @@ def create_charm(nodetmp, tmpdir, bundledir):
                 for key, val in int.input.items():
                     print "input: " + key
                     print val
-                    configfile.write("\t:" + key + "\n")
-                    configfile.write("\t\tdefault:\n")
-                    configfile.write("\t\tdescription: TOSCA imported option\n")
-                    configfile.write("\t\ttype: string\n")
+                    configfile.write("  :" + key + "\n")
+                    configfile.write("    default:\n")
+                    configfile.write("    description: TOSCA imported option\n")
+                    configfile.write("    type: string\n")
                 # copy the script
                 shutil.copy(tmpdir + "/" + int.implementation, charmdir + "/hooks/")
                 # TODO create the juju wrapper script
@@ -145,11 +145,12 @@ def create_nodes(yaml, tmpdir, bundledir):
     # artifacts pulled from it.
     # bundledir is the output directory for the bundle file and
     # file artifacts should be placed there.
-    cyaml = "\tservices:\n"
+    cyaml = "  services:\n"
     for nodetmp in yaml.nodetemplates:
         logger.debug("Found node type:" + nodetmp.name + nodetmp.type)
-        cyaml += "\t\t" + nodetmp.name + ":\n"
-        cyaml += "\t\t\tCharm: " + nodetmp.name + "\n"
+        cyaml += "    " + nodetmp.name + ":\n"
+        cyaml += "      charm: \"" + nodetmp.name + "\"\n"
+        cyaml += "      num_units: 1\n"
         print "Props:" + str(sorted([p.name for p in nodetmp.properties]))
         print "Caps:" + str(sorted([p.name for p in nodetmp.capabilities]))
         tyaml = ""
@@ -158,19 +159,19 @@ def create_nodes(yaml, tmpdir, bundledir):
             # TODO how to handle props that have get_input values?
             # This temporarily skips any "non-stringable" values
             if isinstance(prop.value, (basestring, int, float, long)):
-                tyaml += "\t\t\t\t" + prop.name + ":" + str(prop.value) + "\n"
-        if tyaml:
-            cyaml += "\t\t\tOptions:\n"
-            cyaml += tyaml
+                tyaml += "        \"" + prop.name + "\": " + str(prop.value) + "\n"
+         if tyaml:
+             cyaml += "      options:\n"
+             cyaml += tyaml
 
         tyaml = ""
         if nodetmp.requirements:
             for i in nodetmp.requirements:
                 for req, node_name in i.items():
-                    tyaml += "\t\t\t\t" + req + ":" + node_name + "\n"
-        if tyaml:
-            cyaml += "\t\t\tConstraints:\n"
-            cyaml += tyaml
+                    tyaml += "        \"" + req + "\": \"" + node_name + "\"\n"
+         if tyaml:
+             cyaml += "      constraints:\n"
+             cyaml += tyaml
 
         create_charm(nodetmp, tmpdir, bundledir)
         # TODO not sure these classes are warranted with toscalib
@@ -183,12 +184,12 @@ def create_nodes(yaml, tmpdir, bundledir):
 
 
 def create_relations(yaml, tmpdir, bundledir):
-    ryaml = "\trelations:\n"
+    ryaml = "  relations:\n"
     # create relations based on yaml file
     for nodetmp in yaml.nodetemplates:
         logger.debug("Found rel node:" + nodetmp.name + " " + nodetmp.type)
         for relation, node in nodetmp.relationship.items():
-            ryaml += "\t\t- " + nodetmp.name + "," + node.name + "\n"
+            ryaml += "    - \"" + nodetmp.name + "," + node.name + "\"\n"
 
     return(ryaml)
 
