@@ -128,8 +128,8 @@ def create_charm(nodetmp, tmpdir, bundledir):
                     configfile.write("\t\tdescription: TOSCA imported option\n")
                     configfile.write("\t\ttype: string\n")
                 # copy the script
-                # shutil.copy(int.implementation, charmdir)
-                # create the wrapper
+                shutil.copy(tmpdir + "/" + int.implementation, charmdir + "/hooks/")
+                # TODO create the juju wrapper script
             elif int.name == "start":
                 print("found start", int.name, int.implementation, int.input)
             elif int.name == "create":
