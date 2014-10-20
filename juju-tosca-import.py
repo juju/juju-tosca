@@ -26,6 +26,12 @@ import logging
 import shutil
 # from jujutranslator.nodetype2charm import Nodetype2Charm
 from translator.toscalib.tosca_template import ToscaTemplate
+import yaml
+try:
+    from yaml import CDumper as Dumper
+except ImportError:
+    from yaml import Dumper as Dumper
+
 from pprint import pprint
 from inspect import currentframe, getframeinfo
 
@@ -145,33 +151,29 @@ def create_nodes(yaml, tmpdir, bundledir):
     # artifacts pulled from it.
     # bundledir is the output directory for the bundle file and
     # file artifacts should be placed there.
-    cyaml = "  services:\n"
+    cyaml = {}
     for nodetmp in yaml.nodetemplates:
-        logger.debug("Found node type:" + nodetmp.name + nodetmp.type)
-        cyaml += "    " + nodetmp.name + ":\n"
-        cyaml += "      charm: \"" + nodetmp.name + "\"\n"
-        cyaml += "      num_units: 1\n"
+        logger.debug("Found node type:" + nodetmp.name + " " + nodetmp.type)
+        cyaml[nodetmp.name] = {}
+        cyaml[nodetmp.name]['charm'] = nodetmp.name
+        cyaml[nodetmp.name]['num_units'] = 1
         print "Props:" + str(sorted([p.name for p in nodetmp.properties]))
         print "Caps:" + str(sorted([p.name for p in nodetmp.capabilities]))
-        tyaml = ""
-        for prop in nodetmp.properties:
-            # TODO figure out proper mapping to bundle
-            # TODO how to handle props that have get_input values?
-            # This temporarily skips any "non-stringable" values
-            if isinstance(prop.value, (basestring, int, float, long)):
-                tyaml += "        \"" + prop.name + "\": " + str(prop.value) + "\n"
-        if tyaml:
-            cyaml += "      options:\n"
-            cyaml += tyaml
 
-        tyaml = ""
+        if nodetmp.properties:
+            cyaml[nodetmp.name]['options'] = {}
+            for prop in nodetmp.properties:
+                # TODO figure out proper mapping to bundle
+                # TODO how to handle props that have get_input values?
+                # This temporarily skips any "non-stringable" values
+                if isinstance(prop.value, (basestring, int, float, long)):
+                    cyaml[nodetmp.name]['options'][prop.name] = prop.value
+
         if nodetmp.requirements:
+            cyaml[nodetmp.name]['constraints'] = {}
             for i in nodetmp.requirements:
                 for req, node_name in i.items():
-                    tyaml += "        \"" + req + "\": \"" + node_name + "\"\n"
-        if tyaml:
-            cyaml += "      constraints:\n"
-            cyaml += tyaml
+                    cyaml[nodetmp.name]['constraints'][req] = node_name
 
         create_charm(nodetmp, tmpdir, bundledir)
         # TODO not sure these classes are warranted with toscalib
@@ -184,17 +186,16 @@ def create_nodes(yaml, tmpdir, bundledir):
 
 
 def create_relations(yaml, tmpdir, bundledir):
-    ryaml = "  relations:\n"
+    ryaml = {}
     # create relations based on yaml file
     for nodetmp in yaml.nodetemplates:
         logger.debug("Found rel node:" + nodetmp.name + " " + nodetmp.type)
         for relation, node in nodetmp.relationship.items():
-            ryaml += "    - \"" + nodetmp.name + "," + node.name + "\"\n"
-
+            ryaml[nodetmp.name] = node.name
     return(ryaml)
 
 
-def create_bundle(cyaml, ryaml, bundledir):
+def create_bundle(byaml, bundledir):
     logger.debug(bundledir)
     bfn = bundledir + "/tosca.yaml"
     try:
@@ -202,9 +203,7 @@ def create_bundle(cyaml, ryaml, bundledir):
     except:
         print ("Couldn't open bundlefile")
         sys.exit(2)
-    bfile.write("toscaImport:\n")
-    bfile.write(cyaml + "\n")
-    bfile.write(ryaml + "\n")
+    bfile.write(yaml.safe_dump(byaml, default_flow_style=False, allow_unicode=True))
     bfile.close()
     return(bfn)
 
@@ -254,9 +253,12 @@ def main():
     bundledir = "./BUNDLE"
     if not os.path.exists(bundledir):
         os.mkdir(bundledir)
+    byaml = {'toscaImport': {}}
     cbundle = create_nodes(yaml, tmpdir, bundledir)
+    byaml['toscaImport']['services'] = cbundle
     rbundle = create_relations(yaml, tmpdir, bundledir)
-    bundlefile = create_bundle(str(cbundle), str(rbundle), bundledir)
+    byaml['toscaImport']['relations'] = rbundle
+    bundlefile = create_bundle(byaml, bundledir)
     print "Import complete, bundle file is: " + bundlefile
 
     # cleanup tmpdir
