@@ -108,9 +108,9 @@ def create_charm(nodetmp, tmpdir, bundledir):
     for c in nodetmp.capabilities:
         metafile.write("  " + c.name + "\n")
     metafile.write("Requires:\n")
-    #for r in nodetmp.requirements:
+    # for r in nodetmp.requirements:
     #    print r
-        #metafile.write("  " + r.key + "\n")
+    #    metafile.write("  " + r.key + "\n")
 
     metafile.close()
 
@@ -160,18 +160,18 @@ def create_nodes(yaml, tmpdir, bundledir):
             # This temporarily skips any "non-stringable" values
             if isinstance(prop.value, (basestring, int, float, long)):
                 tyaml += "        \"" + prop.name + "\": " + str(prop.value) + "\n"
-         if tyaml:
-             cyaml += "      options:\n"
-             cyaml += tyaml
+        if tyaml:
+            cyaml += "      options:\n"
+            cyaml += tyaml
 
         tyaml = ""
         if nodetmp.requirements:
             for i in nodetmp.requirements:
                 for req, node_name in i.items():
                     tyaml += "        \"" + req + "\": \"" + node_name + "\"\n"
-         if tyaml:
-             cyaml += "      constraints:\n"
-             cyaml += tyaml
+        if tyaml:
+            cyaml += "      constraints:\n"
+            cyaml += tyaml
 
         create_charm(nodetmp, tmpdir, bundledir)
         # TODO not sure these classes are warranted with toscalib
