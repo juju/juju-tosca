@@ -105,34 +105,37 @@ def create_charm(nodetmp, tmpdir, bundledir):
     except:
         print ("Couldn't open metadata.yaml")
         sys.exit(2)
-    metafile.write("Name: " + nodetmp.name + "\n")
-    metafile.write("Summary: juju-tosca imported charm\n")
-    metafile.write("Description: juju-tosca imported charm\n")
+    myaml = {}
+    myaml['name'] = nodetmp.name
+    myaml['summary'] = 'juju-tosca imported charm'
+    myaml['description'] = 'juju-tosca imported charm'
 
     # TODO: Write capabilities, provides & requires
-    metafile.write("Provides:\n")
-    for c in nodetmp.capabilities:
-        metafile.write("  " + c.name + "\n")
-    metafile.write("Requires:\n")
-    # for r in nodetmp.requirements:
-    #    print r
-    #    metafile.write("  " + r.key + "\n")
+    if nodetmp.capabilities:
+        myaml['provides'] = {}
+        for c in nodetmp.capabilities:
+            myaml['provides'][c.nodetype] = str(c.name)
+    if nodetmp.requirements:
+        myaml['requires'] = nodetmp.requirements
 
+    metafile.write(yaml.safe_dump(myaml, default_flow_style=False, allow_unicode=True))
     metafile.close()
 
     # Create the hooks
+    cyaml = {}
     for int in nodetmp.interfaces:
         if int.type == "tosca.interfaces.node.Lifecycle":
             if int.name == "configure":
                 print("found config", int.name, int.implementation, int.input)
-                configfile.write("options:\n")
+                cyaml['options'] = {}
                 for key, val in int.input.items():
                     print "input: " + key
                     print val
-                    configfile.write("  :" + key + "\n")
-                    configfile.write("    default:\n")
-                    configfile.write("    description: TOSCA imported option\n")
-                    configfile.write("    type: string\n")
+                    cyaml['options'][key] = {}
+                    cyaml['options'][key]['default'] = ""
+                    cyaml['options'][key]['description'] = "TOSCA imported option"
+                    # TODO find real type?
+                    cyaml['options'][key]['type'] = "string"
                 # copy the script
                 shutil.copy(tmpdir + "/" + int.implementation, charmdir + "/hooks/")
                 # TODO create the juju wrapper script
@@ -142,6 +145,7 @@ def create_charm(nodetmp, tmpdir, bundledir):
                 print("found create", int.name, int.implementation, int.input)
             else:
                 print(int.name, int.implementation, int.input)
+    configfile.write(yaml.safe_dump(cyaml, default_flow_style=False, allow_unicode=True))
     configfile.close()
 
 
