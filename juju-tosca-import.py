@@ -118,7 +118,9 @@ def create_charm(nodetmp, tmpdir, bundledir):
     if nodetmp.requirements:
         myaml['requires'] = nodetmp.requirements
 
-    metafile.write(yaml.safe_dump(myaml, default_flow_style=False, allow_unicode=True))
+    metafile.write(
+        yaml.safe_dump(myaml, default_flow_style=False, allow_unicode=True)
+    )
     metafile.close()
 
     # Create the hooks
@@ -129,15 +131,17 @@ def create_charm(nodetmp, tmpdir, bundledir):
                 print("found config", int.name, int.implementation, int.input)
                 cyaml['options'] = {}
                 for key, val in int.input.items():
-                    print "input: " + key
-                    print val
                     cyaml['options'][key] = {}
                     cyaml['options'][key]['default'] = ""
-                    cyaml['options'][key]['description'] = "TOSCA imported option"
+                    cyaml['options'][key]['description'] = (
+                        "TOSCA imported option"
+                    )
                     # TODO find real type?
                     cyaml['options'][key]['type'] = "string"
                 # copy the script
-                shutil.copy(tmpdir + "/" + int.implementation, charmdir + "/hooks/")
+                shutil.copy(
+                    tmpdir + "/" + int.implementation, charmdir + "/hooks/"
+                )
                 # TODO create the juju wrapper script
             elif int.name == "start":
                 print("found start", int.name, int.implementation, int.input)
@@ -145,7 +149,9 @@ def create_charm(nodetmp, tmpdir, bundledir):
                 print("found create", int.name, int.implementation, int.input)
             else:
                 print(int.name, int.implementation, int.input)
-    configfile.write(yaml.safe_dump(cyaml, default_flow_style=False, allow_unicode=True))
+    configfile.write(
+        yaml.safe_dump(cyaml, default_flow_style=False, allow_unicode=True)
+    )
     configfile.close()
 
 
@@ -161,8 +167,6 @@ def create_nodes(yaml, tmpdir, bundledir):
         cyaml[nodetmp.name] = {}
         cyaml[nodetmp.name]['charm'] = nodetmp.name
         cyaml[nodetmp.name]['num_units'] = 1
-        print "Props:" + str(sorted([p.name for p in nodetmp.properties]))
-        print "Caps:" + str(sorted([p.name for p in nodetmp.capabilities]))
 
         if nodetmp.properties:
             cyaml[nodetmp.name]['options'] = {}
@@ -184,18 +188,18 @@ def create_nodes(yaml, tmpdir, bundledir):
         # doing the heavy lifting on the parser.
         # translator = Nodetype2Charm(nodetmp, bundledir)
         # translator.execute()
-        print
 
     return(cyaml)
 
 
 def create_relations(yaml, tmpdir, bundledir):
-    ryaml = {}
+    ryaml = []
     # create relations based on yaml file
+    # myaml['requires'] = nodetmp.requirements
     for nodetmp in yaml.nodetemplates:
         logger.debug("Found rel node:" + nodetmp.name + " " + nodetmp.type)
         for relation, node in nodetmp.relationship.items():
-            ryaml[nodetmp.name] = node.name
+            ryaml.append(node.name + ":" + relation.capability_name)
     return(ryaml)
 
 
@@ -207,7 +211,9 @@ def create_bundle(byaml, bundledir):
     except:
         print ("Couldn't open bundlefile")
         sys.exit(2)
-    bfile.write(yaml.safe_dump(byaml, default_flow_style=False, allow_unicode=True))
+    bfile.write(
+        yaml.safe_dump(byaml, default_flow_style=False, allow_unicode=True)
+    )
     bfile.close()
     return(bfn)
 
