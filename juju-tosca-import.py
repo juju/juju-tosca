@@ -88,7 +88,7 @@ def create_charm(nodetmp, tmpdir, bundledir):
     # create a charm based on the node template
     logger.debug("Creating charm for:" + nodetmp.name + " " + nodetmp.type)
     # Make dirs and open files
-    charmdir = bundledir + "/charms/" + nodetmp.name
+    charmdir = bundledir + "/charms/tosca." + nodetmp.name + "-1"
     if not os.path.exists(charmdir):
         os.makedirs(charmdir)
     if not os.path.exists(charmdir + "/hooks"):
@@ -165,7 +165,7 @@ def create_nodes(yaml, tmpdir, bundledir):
     for nodetmp in yaml.nodetemplates:
         logger.debug("Found node type:" + nodetmp.name + " " + nodetmp.type)
         cyaml[nodetmp.name] = {}
-        cyaml[nodetmp.name]['charm'] = nodetmp.name
+        cyaml[nodetmp.name]['charm'] = "local:tosca." + nodetmp.name + "-1"
         cyaml[nodetmp.name]['num_units'] = 1
 
         if nodetmp.properties:
@@ -205,7 +205,7 @@ def create_relations(yaml, tmpdir, bundledir):
 
 def create_bundle(byaml, bundledir):
     logger.debug(bundledir)
-    bfn = bundledir + "/tosca.yaml"
+    bfn = bundledir + "/bundles.yaml"
     try:
         bfile = open(bfn, 'w')
     except:
@@ -264,6 +264,7 @@ def main():
     if not os.path.exists(bundledir):
         os.mkdir(bundledir)
     byaml = {'toscaImport': {}}
+    byaml['toscaImport']['series'] = "tosca"
     cbundle = create_nodes(yaml, tmpdir, bundledir)
     byaml['toscaImport']['services'] = cbundle
     rbundle = create_relations(yaml, tmpdir, bundledir)
