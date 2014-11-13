@@ -51,9 +51,9 @@ def unpack_zip(zipfn):
     try:
         zip = zipfile.ZipFile(zipfn, 'r')
     except:
-        print "Unable to open zip file", zipfn
+        print "Error: Unable to open zip file", zipfn
         usage()
-        sys.exit(2)
+        sys.exit(1)
 
     logger.debug(zip.namelist())
     tmpdir = tempfile.mkdtemp(prefix="CSAR_", dir="./")
@@ -65,13 +65,13 @@ def parse_metafile(tmpdir):
     # Parse the TOSCA.meta file looking for yaml definitions
     # TODO This may be unnecessary if/when toscalib does it
     if not os.path.isfile(tmpdir+"/TOSCA-Metadata/TOSCA.meta"):
-        print "TOSCA.meta not found in CSAR file"
+        print "Error: TOSCA.meta not found in CSAR file"
         sys.exit(1)
     try:
         tfile = open(tmpdir+'/TOSCA-Metadata/TOSCA.meta', 'r')
     except:
-        print "Couldn't open Tosca metafile"
-        sys.exit(2)
+        print "Error: Couldn't open Tosca metafile"
+        sys.exit(1)
     tlines = tfile.readlines()
     for line in tlines:
         if (line.startswith("Name")):
@@ -97,14 +97,14 @@ def create_charm(nodetmp, tmpdir, bundledir):
     try:
         configfile = open(configfn, 'w')
     except:
-        print ("Couldn't open config.yaml")
-        sys.exit(2)
+        print ("Error: Couldn't open config.yaml")
+        sys.exit(1)
     metafn = charmdir + "/metadata.yaml"
     try:
         metafile = open(metafn, 'w')
     except:
-        print ("Couldn't open metadata.yaml")
-        sys.exit(2)
+        print ("Error: Couldn't open metadata.yaml")
+        sys.exit(1)
     myaml = {}
     myaml['name'] = nodetmp.name
     myaml['summary'] = 'juju-tosca imported charm'
@@ -128,7 +128,6 @@ def create_charm(nodetmp, tmpdir, bundledir):
     for int in nodetmp.interfaces:
         if int.type == "tosca.interfaces.node.Lifecycle":
             if int.name == "configure":
-                print("found config", int.name, int.implementation, int.input)
                 cyaml['options'] = {}
                 for key, val in int.input.items():
                     cyaml['options'][key] = {}
@@ -162,11 +161,16 @@ def create_nodes(yaml, tmpdir, bundledir):
     # bundledir is the output directory for the bundle file and
     # file artifacts should be placed there.
     cyaml = {}
+    guix = 0
     for nodetmp in yaml.nodetemplates:
         logger.debug("Found node type:" + nodetmp.name + " " + nodetmp.type)
         cyaml[nodetmp.name] = {}
         cyaml[nodetmp.name]['charm'] = "local:tosca." + nodetmp.name + "-1"
         cyaml[nodetmp.name]['num_units'] = 1
+        cyaml[nodetmp.name]['annotations'] = {}
+        cyaml[nodetmp.name]['annotations']['gui-x'] = guix
+        cyaml[nodetmp.name]['annotations']['gui-y'] = 0
+        guix += 200
 
         if nodetmp.properties:
             cyaml[nodetmp.name]['options'] = {}
@@ -209,13 +213,23 @@ def create_bundle(byaml, bundledir):
     try:
         bfile = open(bfn, 'w')
     except:
-        print ("Couldn't open bundlefile")
-        sys.exit(2)
+        print ("Error: Couldn't open bundlefile")
+        sys.exit(1)
     bfile.write(
         yaml.safe_dump(byaml, default_flow_style=False, allow_unicode=True)
     )
     bfile.close()
     return(bfn)
+
+
+def cleanup(rc, tmpdir, bundledir):
+    # cleanup tmpdir
+    if os.path.exists(tmpdir):
+        shutil.rmtree(tmpdir)
+    # Should we clean up bundledir? On error only?
+    # if os.path.exists(bundledir):
+    # shutil.rmtree(bundledir)
+    sys.exit(rc)
 
 
 # Main
@@ -261,21 +275,43 @@ def main():
     # TODO should use this to mkdir, but its annoying right now
     # bundledir = tempfile.mkdtemp(prefix="BUNDLE_", dir="./")
     bundledir = "./BUNDLE"
+    series = {
+        15.04: "Vivid",
+        14.10: "Utopic",
+        14.04: "Trusty",
+        13.10: "Saucy",
+        13.04: "Raring",
+        12.10: "Quantal",
+        12.04: "Precise"
+    }
+
     if not os.path.exists(bundledir):
         os.mkdir(bundledir)
     byaml = {'toscaImport': {}}
-    byaml['toscaImport']['series'] = "tosca"
     cbundle = create_nodes(yaml, tmpdir, bundledir)
     byaml['toscaImport']['services'] = cbundle
+    # figure out the series
+    for nodetmp in cbundle:
+        if 'options' in cbundle[nodetmp]:
+            #if 'os_distribution' in cbundle[nodetmp]['options']:
+            #    if cbundle[nodetmp]['options']['os_distribution'] != "Ubuntu":
+            if ('os_distribution' in cbundle[nodetmp]['options'] and
+               cbundle[nodetmp]['options']['os_distribution'] != "Ubuntu"):
+                print "Error: os_distribution is not Ubuntu"
+                cleanup(1, tmpdir, bundledir)
+            if 'os_version' in cbundle[nodetmp]['options']:
+                if cbundle[nodetmp]['options']['os_version'] in series:
+                    byaml['toscaImport']['series'] = (
+                        series[cbundle[nodetmp]["options"]['os_version']])
+                else:
+                    print "Error: os_version is not a known Ubuntu series."
+                    cleanup(1, tmpdir, bundledir)
+
     rbundle = create_relations(yaml, tmpdir, bundledir)
     byaml['toscaImport']['relations'] = rbundle
     bundlefile = create_bundle(byaml, bundledir)
     print "Import complete, bundle file is: " + bundlefile
-
-    # cleanup tmpdir
-    shutil.rmtree(tmpdir)
-    # Should we clean up bundledir? On error only?
-    # shutil.rmtree(bundledir)
+    cleanup(0, tmpdir, bundledir)
 
 
 if __name__ == "__main__":
