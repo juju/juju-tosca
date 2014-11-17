@@ -293,18 +293,12 @@ def main():
     # figure out the series
     for nodetmp in cbundle:
         if 'options' in cbundle[nodetmp]:
-            #if 'os_distribution' in cbundle[nodetmp]['options']:
-            #    if cbundle[nodetmp]['options']['os_distribution'] != "Ubuntu":
-            if ('os_distribution' in cbundle[nodetmp]['options'] and
-               cbundle[nodetmp]['options']['os_distribution'] != "Ubuntu"):
-                print "Error: os_distribution is not Ubuntu"
-                cleanup(1, tmpdir, bundledir)
             if 'os_version' in cbundle[nodetmp]['options']:
                 if cbundle[nodetmp]['options']['os_version'] in series:
                     byaml['toscaImport']['series'] = (
                         series[cbundle[nodetmp]["options"]['os_version']])
                 else:
-                    print "Error: os_version is not a known Ubuntu series."
+                    print "Error: os_version is not a known release."
                     cleanup(1, tmpdir, bundledir)
 
     rbundle = create_relations(yaml, tmpdir, bundledir)
