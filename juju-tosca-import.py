@@ -50,7 +50,7 @@ def unpack_zip(zipfn):
     # TODO This may be unnecessary if/when toscalib does it
     try:
         zip = zipfile.ZipFile(zipfn, 'r')
-    except:
+    except (zipfile.BadZipfile, zipfile.LargeZipFile):
         print "Error: Unable to open zip file", zipfn
         usage()
         sys.exit(1)
@@ -69,7 +69,7 @@ def parse_metafile(tmpdir):
         sys.exit(1)
     try:
         tfile = open(tmpdir+'/TOSCA-Metadata/TOSCA.meta', 'r')
-    except:
+    except (IOError, OSError):
         print "Error: Couldn't open Tosca metafile"
         sys.exit(1)
     tlines = tfile.readlines()
@@ -96,19 +96,21 @@ def create_charm(nodetmp, tmpdir, bundledir):
     configfn = charmdir + "/config.yaml"
     try:
         configfile = open(configfn, 'w')
-    except:
+    except (IOError, OSError):
         print ("Error: Couldn't open config.yaml")
         sys.exit(1)
     metafn = charmdir + "/metadata.yaml"
     try:
         metafile = open(metafn, 'w')
-    except:
+    except (IOError, OSError):
         print ("Error: Couldn't open metadata.yaml")
         sys.exit(1)
-    myaml = {}
-    myaml['name'] = nodetmp.name
-    myaml['summary'] = 'juju-tosca imported charm'
-    myaml['description'] = 'juju-tosca imported charm'
+
+    myaml = {
+        'name': nodetmp.name,
+        'summary': 'juju-tosca imported charm',
+        'description': 'juju-tosca imported charm',
+    }
 
     # TODO: Write capabilities, provides & requires
     if nodetmp.capabilities:
@@ -126,28 +128,29 @@ def create_charm(nodetmp, tmpdir, bundledir):
     # Create the hooks
     cyaml = {}
     for int in nodetmp.interfaces:
-        if int.type == "tosca.interfaces.node.Lifecycle":
-            if int.name == "configure":
-                cyaml['options'] = {}
-                for key, val in int.input.items():
-                    cyaml['options'][key] = {}
-                    cyaml['options'][key]['default'] = ""
-                    cyaml['options'][key]['description'] = (
-                        "TOSCA imported option"
-                    )
+        if int.type != "tosca.interfaces.node.Lifecycle":
+            continue
+        if int.name == "configure":
+            cyaml['options'] = {}
+            for key, val in int.input.items():
+                cyaml['options'][key] = {
+                    'default': "",
+                    'description': 'juju-tosca imported option',
                     # TODO find real type?
-                    cyaml['options'][key]['type'] = "string"
-                # copy the script
-                shutil.copy(
-                    tmpdir + "/" + int.implementation, charmdir + "/hooks/"
-                )
-                # TODO create the juju wrapper script
-            elif int.name == "start":
-                print("found start", int.name, int.implementation, int.input)
-            elif int.name == "create":
-                print("found create", int.name, int.implementation, int.input)
-            else:
-                print(int.name, int.implementation, int.input)
+                    'type': "string",
+                }
+            # copy the script
+            shutil.copy(
+                tmpdir + "/" + int.implementation, charmdir + "/hooks/"
+            )
+            # TODO create the juju wrapper script
+            continue
+        if int.name == "start":
+            print("found start", int.name, int.implementation, int.input)
+            continue
+        if int.name == "create":
+            print("found create", int.name, int.implementation, int.input)
+            continue
     configfile.write(
         yaml.safe_dump(cyaml, default_flow_style=False, allow_unicode=True)
     )
@@ -164,12 +167,14 @@ def create_nodes(yaml, tmpdir, bundledir):
     guix = 0
     for nodetmp in yaml.nodetemplates:
         logger.debug("Found node type:" + nodetmp.name + " " + nodetmp.type)
-        cyaml[nodetmp.name] = {}
-        cyaml[nodetmp.name]['charm'] = "local:tosca." + nodetmp.name + "-1"
-        cyaml[nodetmp.name]['num_units'] = 1
-        cyaml[nodetmp.name]['annotations'] = {}
-        cyaml[nodetmp.name]['annotations']['gui-x'] = guix
-        cyaml[nodetmp.name]['annotations']['gui-y'] = 0
+        cyaml[nodetmp.name] = {
+            'charm': "local:tosca." + nodetmp.name + "-1",
+            'num_units': 1,
+            'annotations': {
+                'gui-x': guix,
+                'gui-y': 0,
+            },
+        }
         guix += 200
 
         if nodetmp.properties:
