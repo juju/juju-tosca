@@ -52,7 +52,7 @@ class UnitHooks():
         :para charmDir: the directory of Juju charm
         """
         self.hook_dir = charm_dir + '/hooks'
-        self.tosca_script_dir = tmpdir
+        self.tosca_script_dir = tosca_dir
 
         if not os.path.exists(self.hook_dir):
             log.info("Create the Charm hooks directory.")
@@ -107,12 +107,60 @@ class UnitHooks():
 
         return is_successful
 
-    def map_config_changed_hook(self):
+    def map_config_changed_hook(self, script_path, properties):
         """
-        This method is used to generate the config changed hook
-        :para
-        :result
+        This method is used to generate the config changed hook.
+        Need to add some commands to get some properties from the unit in
+        the config changed hook.
+
+        According to the TOSCA configure example:
+        db_name: { get_property: [SELF, db_name]}
+
+        :para script_path: the absolute path of the TOSCA artifact script
+        :para properties: the properties need to be used in the config-changed hook
+        :result is_successful. If the config-changed hook is creatd 
+        successfully, return True, otherwise False
         """
+        is_successful = False
+        # property_map is used to store the properties used in the TOSCA configure script
+        # and need to be set in the Juju config-changed hook
+        property_map = dict()
+        
+        for key,value in properties.items():
+            if (value.node_template_name is not None
+                and value.node_template_name == 'SELF'):
+                property_map[key] = value.property_name
+                
+        script_path = self.tosca_script_dir + '/' + script_path
+        
+        if not os.path.exists(script_path):
+            log.warning("Can not find the TOSCA \
+                artifact file: %s.", script_path)
+            return is_successful
+
+        script_name = os.path.basename(script_path)
+        if (script_name is None or
+                not strchr(script_name, EXECUTE_SCRIPT_SUFFIX)):
+            log.warning("Can not find the execute file: %s.", script_path)
+            return is_successful
+
+        src_path = script_path
+        src_path_handle = open(src_path, 'r')
+        
+        dst_path = self.hook_dir + '/' + 'config-changed.sh'
+        dst_path_handle = open(dst_path, 'w')
+        
+        try:
+            src_script_lines = src_path_handle.readLines()
+        except Exception:
+            pass
+        finally:
+            src_path_handle.close()
+            dst_path_handle.close()
+        
+        
+        
+        
 
     def map_start_hook(self, script_path):
         """
